@@ -7,3 +7,4 @@ declare module '@heroui/react' {
   export * from '@heroui/table';
   // Add other exports as needed
 }
+

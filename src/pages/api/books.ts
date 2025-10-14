@@ -41,7 +41,7 @@ export default async function handler(
             return res.status(405).end(`Method ${req.method} Not Allowed`)
         }
 
-        dbConnection()
+        await dbConnection()
 
         if (req.method === 'GET') {
             const data = await Books.find()
@@ -104,8 +104,23 @@ export default async function handler(
 
 
             try { 
+                // Buscar el libro por idBook o por _id
+                const existingBook = await Books.findOne({ 
+                    $or: [
+                        { _id: id },
+                        { idBook: parseInt(id as string) }
+                    ]
+                });
+
+                if (!existingBook) {
+                    return res.status(404).json({ 
+                        ok: false, 
+                        error: "Book not found" 
+                    });
+                }
+
                 const bookUpdate = await Books.findByIdAndUpdate(
-                    id, { 
+                    existingBook._id, { 
                         idBook,  
                         title,
                         authorId,
@@ -147,13 +162,43 @@ export default async function handler(
 
         if (req.method === 'DELETE' ) {
             const { id } = req.query;
-            console.log(id);
+            console.log("=== DELETE BOOK DEBUG ===");
+            console.log("Query id:", id);
+            console.log("Type of id:", typeof id);
 
-            await Books.findByIdAndDelete(id);
-        
-            res
-                .status(200)
-                .json({ ok: true, message: "book deleted", deletedId: `${id}`});    
+            try {
+                // Buscar el libro por idBook o por _id
+                const book = await Books.findOne({ 
+                    $or: [
+                        { _id: id },
+                        { idBook: parseInt(id as string) }
+                    ]
+                });
+
+                console.log("Book found:", book);
+
+                if (!book) {
+                    console.log("Book not found");
+                    return res.status(404).json({ 
+                        ok: false, 
+                        error: "Book not found" 
+                    });
+                }
+
+                console.log("Deleting book with _id:", book._id);
+                const deletedBook = await Books.findByIdAndDelete(book._id);
+                console.log("Book deleted successfully:", deletedBook);
+            
+                res
+                    .status(200)
+                    .json({ ok: true, message: "book deleted", deletedId: `${book.idBook}`});    
+            } catch (deleteError) {
+                console.error("Error in delete operation:", deleteError);
+                return res.status(500).json({ 
+                    ok: false, 
+                    error: "Failed to delete book: " + deleteError.message 
+                });
+            }
         }
 
     } catch (err) {
