@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Image from "next/image";
 import { Input, Button, Switch, Tabs, Tab, Card, CardBody, CardHeader } from "@heroui/react";
 import { CheckCircleIcon, XCircleIcon, BookOpenIcon, UserGroupIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { postAuthor, getAuthors, type Author } from "../../services/authors";
+import { postAuthor, getAuthors, updateAuthor, deleteAuthor, type Author } from "../../services/authors";
 import { postBook, getBooks, updateBook, deleteBook, type Book } from "../../services/books";
 
 interface AuthorFormData {
@@ -71,6 +71,7 @@ const Dashboard = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
 
   // Verificar sesión al cargar el componente
   useEffect(() => {
@@ -163,23 +164,38 @@ const Dashboard = () => {
 
     try {
       setAuthorErrors([]);
-      await postAuthor({
-        name: authorFormData.name,
-        nationality: authorFormData.nationality,
-        birthYear: parseInt(authorFormData.birthYear),
-        isActive: authorFormData.isActive,
-      });
 
-      setSuccessMessage("Author created successfully!");
+      if (editingAuthor) {
+        // Actualizar autor existente
+        await updateAuthor(editingAuthor.authorId, {
+          name: authorFormData.name,
+          nationality: authorFormData.nationality,
+          birthYear: parseInt(authorFormData.birthYear),
+          isActive: authorFormData.isActive,
+        });
+        setSuccessMessage("Author updated successfully!");
+      } else {
+        // Crear nuevo autor
+        await postAuthor({
+          name: authorFormData.name,
+          nationality: authorFormData.nationality,
+          birthYear: parseInt(authorFormData.birthYear),
+          isActive: authorFormData.isActive,
+        });
+        setSuccessMessage("Author created successfully!");
+      }
+
+      // Limpiar formulario y estado de edición
       setAuthorFormData({
         name: "",
         nationality: "",
         birthYear: "",
         isActive: false,
       });
+      setEditingAuthor(null);
       loadData(); // Recargar datos
     } catch (error) {
-      setErrorMessage("Error creating author");
+      setErrorMessage(editingAuthor ? "Error updating author" : "Error creating author");
       console.error("Error:", error);
     }
   };
@@ -320,7 +336,7 @@ const Dashboard = () => {
     setActiveTab("books");
   };
 
-  // Función para cancelar edición
+  // Función para cancelar edición de libro
   const handleCancelEdit = () => {
     setEditingBook(null);
     setBookFormData({
@@ -331,6 +347,42 @@ const Dashboard = () => {
       availableCopies: "",
       img: "",
     });
+  };
+
+  // Función para editar autor
+  const handleEditAuthor = (author: Author) => {
+    setEditingAuthor(author);
+    setAuthorFormData({
+      name: author.name,
+      nationality: author.nationality,
+      birthYear: author.birthYear.toString(),
+      isActive: author.isActive,
+    });
+  };
+
+  // Función para cancelar edición de autor
+  const handleCancelAuthorEdit = () => {
+    setEditingAuthor(null);
+    setAuthorFormData({
+      name: "",
+      nationality: "",
+      birthYear: "",
+      isActive: false,
+    });
+  };
+
+  // Función para eliminar autor
+  const handleDeleteAuthor = async (authorId: number) => {
+    if (window.confirm("Are you sure you want to delete this author?")) {
+      try {
+        await deleteAuthor(authorId.toString());
+        setSuccessMessage("Author deleted successfully!");
+        loadData();
+      } catch (error) {
+        setErrorMessage("Error deleting author");
+        console.error("Error:", error);
+      }
+    }
   };
 
   // Filtrar libros
@@ -399,7 +451,9 @@ const Dashboard = () => {
               {/* Formulario de autores */}
               <Card>
                 <CardHeader>
-                  <h3 className="text-xl font-semibold">Add New Author</h3>
+                  <h3 className="text-xl font-semibold">
+                    {editingAuthor ? `Edit Author: ${editingAuthor.name}` : "Add New Author"}
+                  </h3>
                 </CardHeader>
                 <CardBody>
                   <form onSubmit={handleAuthorSubmit} noValidate>
@@ -449,9 +503,21 @@ const Dashboard = () => {
                         />
                       </div>
 
-                      <Button className="w-full" type="submit" variant="bordered">
-                        Add Author
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button className="flex-1" type="submit" variant="bordered" color="primary">
+                          {editingAuthor ? "Update Author" : "Add Author"}
+                        </Button>
+                        {editingAuthor && (
+                          <Button
+                            className="flex-1"
+                            variant="bordered"
+                            color="default"
+                            onPress={handleCancelAuthorEdit}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </form>
                 </CardBody>
@@ -481,6 +547,27 @@ const Dashboard = () => {
                             </span>
                             <p className="text-xs text-gray-400 mt-1">ID: {author.authorId}</p>
                           </div>
+                        </div>
+                        {/* Botones de acción */}
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            startContent={<PencilIcon className="w-4 h-4" />}
+                            onPress={() => handleEditAuthor(author)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            startContent={<TrashIcon className="w-4 h-4" />}
+                            onPress={() => handleDeleteAuthor(author.authorId)}
+                          >
+                            Delete
+                          </Button>
                         </div>
                       </div>
                     ))}

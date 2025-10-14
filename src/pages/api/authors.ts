@@ -147,13 +147,46 @@ export default async function handler(
 
         if (req.method === 'DELETE') {
             const { authorId } = req.query;
-            console.log(authorId);
+            console.log("=== DELETE AUTHOR DEBUG ===");
+            console.log("authorId from query:", authorId);
 
-            await Authors.findByIdAndDelete(authorId);
+            // Validar que authorId existe
+            if (!authorId) {
+                return res.status(400).json({
+                    ok: false,
+                    error: "authorId is required in query params"
+                });
+            }
 
-            res
-                .status(200)
-                .json({ ok: true, message: "author deleted", deletedId: `${authorId}` });
+            try {
+                // Buscar el autor por authorId (no por _id)
+                const author = await Authors.findOne({ authorId: Number(authorId) });
+                console.log("Author found:", author);
+
+                if (!author) {
+                    console.log("Author not found");
+                    return res.status(404).json({
+                        ok: false,
+                        error: "Author not found"
+                    });
+                }
+
+                console.log("Deleting author with _id:", author._id);
+                const deletedAuthor = await Authors.findByIdAndDelete(author._id);
+                console.log("Author deleted successfully:", deletedAuthor);
+
+                return res.status(200).json({
+                    ok: true,
+                    message: "author deleted",
+                    deletedId: `${author.authorId}`
+                });
+            } catch (deleteError) {
+                console.error("Error in delete operation:", deleteError);
+                return res.status(500).json({
+                    ok: false,
+                    error: "Failed to delete author"
+                });
+            }
         }
 
     } catch (err) {

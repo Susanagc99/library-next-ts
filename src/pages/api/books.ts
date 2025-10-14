@@ -90,27 +90,32 @@ export default async function handler(
         }
 
         if (req.method === 'PUT') { 
+            const { id } = req.body;
             const {
-                id,
-                idBook,  
                 title,
                 authorId,
                 category,
                 publishedYear,
                 availableCopies,
-                img,
-                createdAt
-            } = req.body
+                img
+            } = req.body;
 
+            console.log("=== UPDATE BOOK DEBUG ===");
+            console.log("id from body:", id);
+            console.log("Update data:", { title, authorId, category, publishedYear, availableCopies, img });
+
+            // Validar que id existe
+            if (!id) {
+                return res.status(400).json({
+                    ok: false,
+                    error: "id is required in body"
+                });
+            }
 
             try { 
-                // Buscar el libro por idBook o por _id
-                const existingBook = await Books.findOne({ 
-                    $or: [
-                        { _id: id },
-                        { idBook: parseInt(id as string) }
-                    ]
-                });
+                // Buscar el libro por idBook
+                const existingBook = await Books.findOne({ idBook: Number(id) });
+                console.log("Book found:", existingBook);
 
                 if (!existingBook) {
                     return res.status(404).json({ 
@@ -119,62 +124,62 @@ export default async function handler(
                     });
                 }
 
+                // Actualizar solo los campos que se envían
+                const updateData: any = {};
+                if (title !== undefined) updateData.title = title;
+                if (authorId !== undefined) updateData.authorId = authorId;
+                if (category !== undefined) updateData.category = category;
+                if (publishedYear !== undefined) updateData.publishedYear = publishedYear;
+                if (availableCopies !== undefined) updateData.availableCopies = availableCopies;
+                if (img !== undefined) updateData.img = img;
+
                 const bookUpdate = await Books.findByIdAndUpdate(
-                    existingBook._id, { 
-                        idBook,  
-                        title,
-                        authorId,
-                        category,
-                        publishedYear,
-                        availableCopies,
-                        img,
-                        createdAt 
-                    },
-                    { new: true },
+                    existingBook._id, 
+                    updateData,
+                    { new: true, runValidators: true }
                 );
 
-                //runvalidator para validar los datos
                 if (!bookUpdate) {
                     return res.status(404).json({ 
                         ok: false, 
-                        error: "book not found" 
+                        error: "Book not found during update" 
                     });
                 }
 
-                console.log(bookUpdate);
+                console.log("Book updated successfully:", bookUpdate);
 
-                return res
-                .status(200)
-                .json({
+                return res.status(200).json({
                     ok: true,
-                    message: "book updted",
-                    updatedId: idBook
+                    message: "book updated",
+                    updatedId: `${bookUpdate.idBook}`
                 });
                 
             } catch (error) {
                 console.error("Update error:", error);
                 return res.status(400).json({ 
                     ok: false, 
-                    error: "Failed to update author" 
+                    error: "Failed to update book" 
                 });
             }
         }
 
-        if (req.method === 'DELETE' ) {
+        if (req.method === 'DELETE') {
             const { id } = req.query;
             console.log("=== DELETE BOOK DEBUG ===");
             console.log("Query id:", id);
             console.log("Type of id:", typeof id);
 
-            try {
-                // Buscar el libro por idBook o por _id
-                const book = await Books.findOne({ 
-                    $or: [
-                        { _id: id },
-                        { idBook: parseInt(id as string) }
-                    ]
+            // Validar que id existe
+            if (!id) {
+                return res.status(400).json({
+                    ok: false,
+                    error: "id is required in query params"
                 });
+            }
 
+            try {
+                // Buscar el libro por idBook
+                const book = await Books.findOne({ idBook: Number(id) });
                 console.log("Book found:", book);
 
                 if (!book) {
@@ -189,14 +194,16 @@ export default async function handler(
                 const deletedBook = await Books.findByIdAndDelete(book._id);
                 console.log("Book deleted successfully:", deletedBook);
             
-                res
-                    .status(200)
-                    .json({ ok: true, message: "book deleted", deletedId: `${book.idBook}`});    
+                return res.status(200).json({ 
+                    ok: true, 
+                    message: "book deleted", 
+                    deletedId: `${book.idBook}`
+                });    
             } catch (deleteError) {
                 console.error("Error in delete operation:", deleteError);
                 return res.status(500).json({ 
                     ok: false, 
-                    error: "Failed to delete book: " + deleteError.message 
+                    error: "Failed to delete book"
                 });
             }
         }

@@ -39,19 +39,3 @@ try {
 export default Authors;
 
 
-
-
-
-
-// type AuthorDoc = InferSchemaType<typeof authorsSchema>;
-
-// let Authors: Model<AuthorDoc>;
-// const existingAuthorsModel = (models as Record<string, unknown>)["authors"] as unknown as Model<AuthorDoc> | undefined;
-// if (existingAuthorsModel) {
-//     Authors = existingAuthorsModel;
-// } else {
-//     Authors = model<AuthorDoc>("authors", authorsSchema);
-// }
-
-// export default Authors;
-
